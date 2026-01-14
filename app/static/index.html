@@ -160,7 +160,6 @@
         </div>
 
         <div class="section" id="delete-section">
-            <h2>Delete Account</h2>
             <button type="button" class="danger" onclick="deleteUser()">Delete Account</button>
         </div>
     </div>
@@ -168,9 +167,36 @@
     <script>
         let userEmail = null;
 
+        function validateEmail(email) {
+            // 이메일 주소가 올바른 형식인지 확인하는 함수
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        function handleFetchError(error) {
+            // fetch 요청에서 발생한 에러를 처리하는 함수
+            if (typeof error === 'object' && error !== null) {
+                if (Array.isArray(error)) {
+                    return error.map(e => e.msg).join('\n');
+                }
+                return JSON.stringify(error);
+            }
+            return error;
+        }
+
         function loginUser() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
+            // email과 password가 모두 입력되었는지 확인
+            if (!email || !password) {
+                alert("Please fill in all fields.");
+                return;
+            }
+            // email이 올바른 형식인지 확인
+            if (!validateEmail(email)) {
+                alert("Please enter a valid email address.");
+                return;
+            }
 
             fetch('/api/user/login', {
                 method: 'POST',
@@ -181,23 +207,33 @@
             })
                 .then(response => {
                     if (!response.ok) {
-                        return response.json().then(error => { throw new Error(error.detail); });
+                        return response.json().then(error => { throw new Error(handleFetchError(error.detail)); });
                     }
                     return response.json();
                 })
                 .then(data => {
                     userEmail = email; // 로그인 성공 시 이메일 저장
-                    document.getElementById('username').textContent = `Hello, ${data.username}!`; // 사용자 이름 표시
+                    document.getElementById('username').textContent = `Hello, ${data.data.username}!`; // 사용자 이름 표시
                     document.getElementById('login-screen').style.display = 'none';
                     document.getElementById('logged-in-screen').style.display = 'block';
                 })
-                .catch(error => alert(`Login failed: ${error.message}`));
+                .catch(error => alert(`Login failed:\n${error.message}`));
         }
 
         function registerUser() {
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
             const username = document.getElementById('register-username').value;
+
+            if (!email || !password || !username) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                alert("Please enter a valid email address.");
+                return;
+            }
 
             fetch('/api/user/register', {
                 method: 'POST',
@@ -208,16 +244,21 @@
             })
                 .then(response => {
                     if (!response.ok) {
-                        return response.json().then(error => { throw new Error(error.detail); });
+                        return response.json().then(error => { throw new Error(handleFetchError(error.detail)); });
                     }
                     return response.json();
                 })
                 .then(() => alert(`Registration successful! Welcome, ${username}.`)) // 성공 메시지에 사용자 이름 표시
-                .catch(error => alert(`Registration failed: ${error.message}`));
+                .catch(error => alert(`Registration failed:\n${error.message}`));
         }
 
         function updatePassword() {
             const newPassword = document.getElementById('update-password').value;
+            // 새 비밀번호가 입력되었는지 확인
+            if (!newPassword) {
+                alert("Please enter a new password.");
+                return;
+            }
 
             fetch('/api/user/update-password', {
                 method: 'PUT',
@@ -228,12 +269,12 @@
             })
                 .then(response => {
                     if (!response.ok) {
-                        return response.json().then(error => { throw new Error(error.detail); });
+                        return response.json().then(error => { throw new Error(handleFetchError(error.detail)); });
                     }
                     return response.json();
                 })
                 .then(() => alert(`Password successfully updated!`)) // 성공 메시지
-                .catch(error => alert(`Password update failed: ${error.message}`));
+                .catch(error => alert(`Password update failed:\n${error.message}`));
         }
 
         function deleteUser() {
@@ -251,7 +292,7 @@
             })
                 .then(response => {
                     if (!response.ok) {
-                        return response.json().then(error => { throw new Error(error.detail); });
+                        return response.json().then(error => { throw new Error(handleFetchError(error.detail)); });
                     }
                     return response.json();
                 })
@@ -261,7 +302,7 @@
                     document.getElementById('login-screen').style.display = 'block';
                     userEmail = null; // 이메일 초기화
                 })
-                .catch(error => alert(`Account deletion failed: ${error.message}`));
+                .catch(error => alert(`Account deletion failed:\n${error.message}`));
         }
     </script>
 </body>
