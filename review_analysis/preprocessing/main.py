@@ -3,7 +3,7 @@ import glob
 from argparse import ArgumentParser
 from typing import Dict, Type
 import sys
-# Add project root to sys.path to allow running this script directly
+# Project root 추가하여 실행 시 파일 경로 문제 해결
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
 if project_root not in sys.path:
