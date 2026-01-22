@@ -207,7 +207,6 @@ class Processor(BaseDataProcessor):
         base = os.path.splitext(os.path.basename(self.input_path))[0]
         site = base.replace("reviews_", "")
 
-        # filename = f"preprocessed_reviews_new_{site}.csv" 
         filename = f"preprocessed_reviews_{site}.csv" 
         out_file = os.path.join(self.output_dir, filename)
 
