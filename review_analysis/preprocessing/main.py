@@ -2,6 +2,13 @@ import os
 import glob
 from argparse import ArgumentParser
 from typing import Dict, Type
+import sys
+# Project root 추가하여 실행 시 파일 경로 문제 해결
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 from review_analysis.preprocessing.base_processor import BaseDataProcessor
 from review_analysis.preprocessing.imdb_processor import IMDbProcessor
 from review_analysis.preprocessing.letterboxd_processor import LetterboxdProcessor
@@ -18,6 +25,7 @@ PREPROCESS_CLASSES: Dict[str, Type[BaseDataProcessor]] = {
     # key는 크롤링한 csv파일 이름으로 적어주세요! ex. reviews_naver.csv -> reviews_naver
 }
 
+# Raw data is located in the database folder
 REVIEW_COLLECTIONS = glob.glob(os.path.join("..","..","database", "reviews_*.csv"))
 
 def create_parser() -> ArgumentParser:
