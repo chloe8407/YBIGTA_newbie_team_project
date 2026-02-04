@@ -168,4 +168,4 @@
   <img width="569" height="709" alt="스크린샷 2026-01-22 134601" src="https://github.com/user-attachments/assets/e1c5a021-aee5-4312-a9b3-d8d403f619e5" />
 
 ## 📖 Docker hub 주소
-- https://hub.docker.com/repository/docker/423min/docker-team-project/general
+- https://hub.docker.com/repository/docker/ilop0624/ybigta_team/general
