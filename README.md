@@ -172,3 +172,14 @@
   
 ## 📖 Docker hub 주소
 - https://hub.docker.com/repository/docker/ilop0624/ybigta_team/general
+
+## 🐰🦊 streamlit cloud 주소 및 구현 사진
+- https://ybigtanewbieteamproject-exjw6uj5uzehoshwtmaemm.streamlit.app
+<img width="1919" height="970" alt="image" src="https://github.com/user-attachments/assets/aa39e7cc-278d-4298-bc3d-4b790e21205d" />
+<img width="1919" height="961" alt="image" src="https://github.com/user-attachments/assets/91f007bc-6acd-4d4a-a175-ccfff5ab944c" />
+<img width="1912" height="959" alt="image" src="https://github.com/user-attachments/assets/ab9cbfa9-bbf3-4e17-9128-1e2dcc606983" />
+
+## 로직
+<img width="1112" height="672" alt="로직 drawio" src="https://github.com/user-attachments/assets/2392278c-3dd9-4879-aa95-bb7793fd265e" />
+
+ 
