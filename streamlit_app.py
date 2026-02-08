@@ -1,149 +1,41 @@
-"""
-Streamlit 기반 영화 리뷰 RAG Agent 챗봇 UI
-팀원들의 st_app 패키지와 연동
-"""
-
 import streamlit as st
 import sys
 import os
-import json
 from datetime import datetime
+from dotenv import load_dotenv
 
-# 프로젝트 루트를 파이썬 경로에 추가
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(current_dir)
 
 
-# ── 영화 정보 로드 ──────────────────────────────────────────
-SUBJECTS_PATH = os.path.join(current_dir, "st_app", "db", "subject_information", "subjects.json")
+load_dotenv()
 
 
-def load_subjects():
-    """subjects.json 로드"""
+
+def get_bot_response(messages: list) -> str:
+    """팀원들이 만든 LangGraph app을 호출하여 응답 생성"""
     try:
-        with open(SUBJECTS_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data[0] if isinstance(data, list) and data else {}
-    except Exception:
-        return {}
+        from st_app.graph import app
+
+        state = {"messages": messages, "route": "", "retrieved_docs": []}
+        result = app.invoke(state)
+
+      
+        for msg in reversed(result.get("messages", [])):
+            if msg.get("role") == "assistant":
+                return msg.get("content", "")
+
+        return "응답을 생성하지 못했습니다."
+    except FileNotFoundError:
+        return "⚠️ FAISS 인덱스를 찾을 수 없습니다. embedder를 먼저 실행해주세요."
+    except ValueError as e:
+        return f"⚠️ API 키 오류: {e}\n\n`.env` 파일에 `UPSTAGE_API_KEY`를 설정해주세요."
+    except Exception as e:
+        return f"⚠️ 오류가 발생했습니다: {e}"
 
 
-def answer_subject_question(question: str, movie: dict) -> str:
-    """영화 정보 질문에 규칙 기반으로 답변"""
-    if not movie:
-        return "영화 정보를 불러올 수 없습니다."
 
-    q = question.lower()
-
-    if any(kw in q for kw in ["감독", "director", "누가 만들"]):
-        directors = ", ".join(movie.get("director", []))
-        return f"🎬 주토피아의 감독은 **{directors}** 입니다."
-
-    if any(kw in q for kw in ["언제", "개봉", "release", "when"]):
-        return f"📅 주토피아는 **{movie.get('release_date', 'Unknown')}** 에 개봉했습니다."
-
-    if any(kw in q for kw in ["출연", "배우", "캐릭터", "등장인물", "cast", "character"]):
-        chars = ", ".join(movie.get("characters", []))
-        return f"🎭 주토피아의 주요 캐릭터: **{chars}**"
-
-    if any(kw in q for kw in ["줄거리", "plot", "story", "내용"]):
-        return f"📖 **줄거리**:\n{movie.get('plot', 'No plot available')}"
-
-    if any(kw in q for kw in ["장르", "genre"]):
-        genres = ", ".join(movie.get("genre", []))
-        return f"🎭 주토피아는 **{genres}** 장르입니다."
-
-    if any(kw in q for kw in ["러닝타임", "시간", "runtime", "길이"]):
-        return f"⏱️ 주토피아의 러닝타임은 **{movie.get('running_time', 'Unknown')}** 입니다."
-
-    if any(kw in q for kw in ["플랫폼", "사이트", "platform", "어디서"]):
-        platforms = ", ".join(movie.get("platform", []))
-        return f"🌐 리뷰 수집 플랫폼: **{platforms}**"
-
-    # 기본: 전체 정보 요약
-    directors = ", ".join(movie.get("director", []))
-    genres = ", ".join(movie.get("genre", []))
-    chars = ", ".join(movie.get("characters", []))
-    return (
-        f"🎬 **{movie.get('title', '')}** ({movie.get('title_ko', '')})\n\n"
-        f"📅 **개봉일**: {movie.get('release_date', 'Unknown')}\n"
-        f"🎭 **감독**: {directors}\n"
-        f"🎨 **장르**: {genres}\n"
-        f"⏱️ **러닝타임**: {movie.get('running_time', 'Unknown')}\n"
-        f"👥 **주요 캐릭터**: {chars}\n\n"
-        f"📖 **줄거리**: {movie.get('plot', '')}"
-    )
-
-
-# ── LLM 기반 라우팅 ──────────────────────────────────────────
-ROUTER_SYSTEM_PROMPT = """너는 사용자의 질문을 분류하는 라우터야.
-주토피아(Zootopia) 영화에 대한 챗봇에서 사용되고 있어.
-
-사용자의 질문을 아래 3가지 중 하나로 분류해. 반드시 해당 단어 하나만 답해.
-
-- info : 영화의 기본 정보를 묻는 질문 (감독, 출연진, 줄거리, 개봉일, 장르, 러닝타임 등)
-- review : 관객/사람들의 리뷰, 반응, 평가, 의견을 묻는 질문
-- chat : 일상 대화, 인사, 영화와 무관한 질문
-
-반드시 info, review, chat 중 하나만 답해. 다른 말은 하지 마."""
-
-
-def classify_question(question: str) -> str:
-    """LLM 기반 질문 분류"""
-    try:
-        from st_app.rag.llm import generate_text
-        result = generate_text(
-            system_prompt=ROUTER_SYSTEM_PROMPT,
-            user_prompt=question,
-            temperature=0.0,
-        )
-        # LLM 응답에서 분류 결과 추출
-        result = result.strip().lower()
-        if "info" in result:
-            return "info"
-        if "review" in result:
-            return "review"
-        return "chat"
-    except Exception:
-        # API 오류 시 기본값: chat
-        return "chat"
-
-
-def get_bot_response(user_message: str) -> str:
-    """사용자 메시지에 대한 봇 응답 생성"""
-    category = classify_question(user_message)
-
-    # 1) 영화 정보 질문
-    if category == "info":
-        movie = load_subjects()
-        return answer_subject_question(user_message, movie)
-
-    # 2) 리뷰 질문 → RAG Review Node 호출
-    if category == "review":
-        try:
-            from st_app.graph.nodes.rag_review_node import rag_review_node
-            return rag_review_node(question=user_message, top_k=3)
-        except FileNotFoundError:
-            return "⚠️ FAISS 인덱스를 찾을 수 없습니다. embedder를 먼저 실행해주세요."
-        except ValueError as e:
-            return f"⚠️ API 키 오류: {e}\n\n`.env` 파일에 `UPSTAGE_API_KEY`를 설정해주세요."
-        except Exception as e:
-            return f"⚠️ 리뷰 검색 중 오류가 발생했습니다: {e}"
-
-    # 3) 일반 대화 → LLM 호출
-    try:
-        from st_app.rag.llm import generate_text
-        return generate_text(
-            system_prompt="너는 친절하고 자연스러운 대화를 하는 챗봇이야. 한국어로 답변하고, 간결하게 대화해.",
-            user_prompt=user_message,
-        )
-    except ValueError:
-        return "안녕하세요! 무엇이든 편하게 물어보세요 😊"
-    except Exception:
-        return "안녕하세요! 무엇이든 편하게 물어보세요 😊"
-
-
-# ── 페이지 설정 ──────────────────────────────────────────
 st.set_page_config(
     page_title="Zootopia Review Chatbot",
     page_icon="🎬",
@@ -151,7 +43,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── 커스텀 CSS ──────────────────────────────────────────
+
 st.markdown("""
     <style>
     .main {
@@ -242,7 +134,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ── 세션 초기화 ──────────────────────────────────────────
+
 def initialize_session_state():
     if "messages" not in st.session_state:
         st.session_state.messages = [{
@@ -266,11 +158,11 @@ def display_chat_history():
                 )
 
 
-# ── 메인 ──────────────────────────────────────────────────
+
 def main():
     initialize_session_state()
 
-    # 헤더
+
     st.markdown("""
         <div class="chat-header">
             <h1>🎬 Zootopia Review Chatbot 🥕</h1>
@@ -278,7 +170,7 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    # 사이드바
+
     with st.sidebar:
         st.markdown("### 📊 챗봇 정보")
         st.markdown("""
@@ -290,7 +182,7 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-        # 대화 초기화
+
         if st.button("🗑️ 대화 내역 초기화", use_container_width=True):
             st.session_state.messages = [{
                 "role": "assistant",
@@ -319,11 +211,10 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-    # 메인 채팅 영역
+    
     col1, col2, col3 = st.columns([1, 6, 1])
 
     with col2:
-        # 입력창 (상단 고정)
         with st.form(key="chat_form", clear_on_submit=True):
             input_col1, input_col2 = st.columns([5, 1])
             with input_col1:
@@ -338,7 +229,7 @@ def main():
                     "전송", use_container_width=True, type="primary"
                 )
 
-        # 전송 처리
+        
         if send_button and user_input.strip():
             timestamp = datetime.now().strftime("%H:%M")
             st.session_state.messages.append({
@@ -347,8 +238,14 @@ def main():
                 "timestamp": timestamp,
             })
 
+            
+            graph_messages = [
+                {"role": m["role"], "content": m["content"]}
+                for m in st.session_state.messages[1:]
+            ]
+
             with st.spinner("🐰 생각 중..."):
-                response = get_bot_response(user_input)
+                response = get_bot_response(graph_messages)
                 timestamp = datetime.now().strftime("%H:%M")
                 st.session_state.messages.append({
                     "role": "assistant",
@@ -357,7 +254,7 @@ def main():
                 })
             st.rerun()
 
-        # 채팅 히스토리
+       
         display_chat_history()
 
 
