@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Environment
+.env
+
 # C extensions
 *.so
 
@@ -216,3 +219,14 @@ __marimo__/
 _backup_local/
 database/preprocessed_*.csv
 __pycache__/
+
+# RAG Agent
+faiss_index/
+*.index
+*.pkl
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Temporary files
+read_excel.py
